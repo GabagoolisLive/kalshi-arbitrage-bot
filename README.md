@@ -194,13 +194,37 @@ The bot intelligently compares both opportunity types and provides recommendatio
 
 The codebase follows a clean, modular architecture with clear separation of concerns:
 
-### Core Modules
+### Project layout
 
-- **`main.py`** - Main orchestration layer with interactive menu system
-- **`src/market_api.py`** - Professional API client with rate limiting and error handling
-- **`src/opportunity_analyzer.py`** - Advanced market analysis for probability arbitrage detection
-- **`src/execution_engine.py`** - Orderbook analysis and trade execution system
-- **`src/cost_calculator.py`** - Comprehensive fee calculation engine
+```
+kalshi-arbitrage-bot/
+├── main.py              # Entry point; launches interactive menu
+├── pyproject.toml       # Project metadata, dependencies, tool config
+├── requirements.txt     # Pip-installable dependencies
+├── src/
+│   ├── __init__.py      # Package exports
+│   ├── bot.py           # KalshiArbitrageBot orchestrator
+│   ├── cli.py           # Interactive menu and CLI handlers
+│   ├── config.py        # Centralized env/config
+│   ├── cost_calculator.py   # Fee calculation engine
+│   ├── execution_engine.py  # Orderbook analysis and trade execution
+│   ├── market_api.py    # Kalshi API client (rate limiting, auth)
+│   └── opportunity_analyzer.py  # Probability arbitrage detection
+└── tests/
+    ├── __init__.py
+    └── test_cost_calculator.py  # Unit tests for fee logic
+```
+
+### Core modules
+
+- **`main.py`** – Entry point; configures logging and launches the interactive menu
+- **`src/bot.py`** – Main orchestrator: scanning, filtering, and displaying opportunities
+- **`src/cli.py`** – Interactive menu (inquirer + fallback) and scan/trade handlers
+- **`src/config.py`** – Environment-based configuration with typed helpers
+- **`src/market_api.py`** – Kalshi API client with rate limiting and error handling
+- **`src/opportunity_analyzer.py`** – Probability arbitrage detection
+- **`src/execution_engine.py`** – Orderbook analysis and trade execution
+- **`src/cost_calculator.py`** – Fee calculation engine
 
 ### Design Principles
 
@@ -350,6 +374,22 @@ The bot includes comprehensive error handling:
 - **API Key Protection**: `.env` file is gitignored by default
 - **Safe Defaults**: Auto-execution disabled by default
 - **Input Validation**: Validates all inputs before API calls
+
+---
+
+## 🧪 Development & testing
+
+Install in editable mode with dev dependencies:
+
+```bash
+pip install -e ".[dev]"
+```
+
+Run tests:
+
+```bash
+pytest
+```
 
 ---
 

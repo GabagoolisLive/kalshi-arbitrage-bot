@@ -15,10 +15,15 @@ The module performs comprehensive analysis including:
     - Time-weighted profitability (profit per day)
     - Optimal trade execution recommendations
 """
-from typing import List, Dict, Optional, Tuple
+import logging
 from datetime import datetime
+from typing import Dict, List, Optional
+
 from dateutil import parser as date_parser
+
 from .cost_calculator import FeeCalculator
+
+logger = logging.getLogger(__name__)
 
 
 class ArbitrageOpportunity:
@@ -280,7 +285,7 @@ class ArbitrageAnalyzer:
             )
         
         except Exception as e:
-            print(f"Error analyzing market {market_data.get('ticker', 'unknown')}: {e}")
+            logger.exception("Error analyzing market %s: %s", market_data.get("ticker", "unknown"), e)
             return None
     
     def find_opportunities(self, markets: List[Dict], 

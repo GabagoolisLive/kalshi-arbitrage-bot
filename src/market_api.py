@@ -4,26 +4,17 @@ Kalshi API Client Module
 A robust and production-ready client for interacting with the Kalshi prediction market API.
 This module provides a clean abstraction layer for all API operations, handling complex
 concerns such as authentication, rate limiting, error recovery, and request optimization.
-
-Key Features:
-    - Intelligent rate limiting with automatic backoff strategies
-    - Support for both official Kalshi SDK and direct REST API calls
-    - Comprehensive error handling with graceful degradation
-    - Automatic retry logic for transient failures
-    - Session management for improved performance
 """
+import logging
 import os
-import requests
 import time
-import json
-import hmac
-import hashlib
-import base64
-from typing import List, Dict, Optional
-from datetime import datetime
-from dotenv import load_dotenv
+from typing import Dict, List, Optional
 
-load_dotenv()
+import requests
+
+from src import config as app_config
+
+logger = logging.getLogger(__name__)
 
 
 class KalshiClient:
@@ -36,42 +27,41 @@ class KalshiClient:
     """
     
     def __init__(self):
-        self.api_key = os.getenv("KALSHI_API_KEY")
-        self.api_secret = os.getenv("KALSHI_API_SECRET")
-        self.base_url = os.getenv("KALSHI_API_BASE_URL", "https://api.elections.kalshi.com/trade-api/v2")
+        self.api_key = app_config.get_api_key()
+        self.api_secret = app_config.get_api_secret()
+        self.base_url = app_config.get_base_url()
         self.session = requests.Session()
-        
+
         self.last_request_time = 0
-        self.min_request_interval = float(os.getenv("API_MIN_INTERVAL", "0.1"))  # 100ms minimum between requests
+        self.min_request_interval = app_config.get_api_min_interval()
         self.request_count = 0
         self.rate_limit_reset_time = 0
-        
-        if not self.api_key or self.api_key == "your_api_key_id_here":
-            print("Warning: KALSHI_API_KEY not set or still has placeholder value")
-        if not self.api_secret or self.api_secret == "your_private_key_here":
-            print("Warning: KALSHI_API_SECRET not set or still has placeholder value")
-        
+
+        if app_config.is_placeholder(self.api_key, "your_api_key_id_here"):
+            logger.warning("KALSHI_API_KEY not set or still has placeholder value")
+        if app_config.is_placeholder(self.api_secret, "your_private_key_here"):
+            logger.warning("KALSHI_API_SECRET not set or still has placeholder value")
+
         self.use_sdk = False
         try:
             from kalshi_python import Configuration, KalshiClient as SDKClient
+
             self.use_sdk = True
             private_key = self.api_secret
-            if os.path.isfile(self.api_secret):
-                with open(self.api_secret, 'r') as f:
+            if self.api_secret and os.path.isfile(self.api_secret):
+                with open(self.api_secret, "r") as f:
                     private_key = f.read()
-            
             config = Configuration(
                 host=self.base_url,
                 api_key_id=self.api_key,
-                private_key_pem=private_key
+                private_key_pem=private_key,
             )
             self.sdk_client = SDKClient(config)
         except ImportError:
             if self.api_key and self.api_secret:
-                self.session.headers.update({
-                    'X-API-Key': self.api_key,
-                    'X-API-Secret': self.api_secret
-                })
+                self.session.headers.update(
+                    {"X-API-Key": self.api_key, "X-API-Secret": self.api_secret}
+                )
     
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict:
         """
@@ -98,7 +88,7 @@ class KalshiClient:
         
         if current_time < self.rate_limit_reset_time:
             wait_time = self.rate_limit_reset_time - current_time
-            print(f"Rate limit cooldown: waiting {wait_time:.1f} seconds...")
+            logger.info("Rate limit cooldown: waiting %.1f seconds...", wait_time)
             time.sleep(wait_time)
             current_time = time.time()
         
@@ -121,7 +111,7 @@ class KalshiClient:
                     wait_time = 60
                 
                 self.rate_limit_reset_time = time.time() + wait_time
-                print(f"Rate limit hit (429). Waiting {wait_time} seconds before retrying...")
+                logger.warning("Rate limit hit (429). Waiting %s seconds before retrying...", wait_time)
                 time.sleep(wait_time)
                 
                 response = self.session.request(method, url, **kwargs)
@@ -131,18 +121,18 @@ class KalshiClient:
         except requests.exceptions.RequestException as e:
             if hasattr(e, 'response') and e.response is not None:
                 if e.response.status_code == 429:
-                    retry_after = e.response.headers.get('Retry-After', '60')
+                    retry_after = e.response.headers.get("Retry-After", "60")
                     wait_time = int(retry_after)
                     self.rate_limit_reset_time = time.time() + wait_time
-                    print(f"Rate limit error. Waiting {wait_time} seconds...")
+                    logger.warning("Rate limit error. Waiting %s seconds...", wait_time)
                     time.sleep(wait_time)
                     raise
                 else:
-                    print(f"API request failed: {e}")
-                    if hasattr(e.response, 'text'):
-                        print(f"Response: {e.response.text}")
+                    logger.exception("API request failed: %s", e)
+                    if hasattr(e.response, "text"):
+                        logger.debug("Response: %s", e.response.text)
             else:
-                print(f"API request failed: {e}")
+                logger.exception("API request failed: %s", e)
             raise
     
     def get_markets(self, limit: int = 100, status: str = "open") -> List[Dict]:
@@ -167,7 +157,7 @@ class KalshiClient:
             )
             return response.get("markets", [])
         except Exception as e:
-            print(f"Error fetching markets: {e}")
+            logger.exception("Error fetching markets: %s", e)
             return []
     
     def get_market(self, market_ticker: str) -> Optional[Dict]:
@@ -187,7 +177,7 @@ class KalshiClient:
             response = self._make_request("GET", f"/markets/{market_ticker}")
             return response.get("market")
         except Exception as e:
-            print(f"Error fetching market {market_ticker}: {e}")
+            logger.exception("Error fetching market %s: %s", market_ticker, e)
             return None
     
     def get_market_orderbook(self, market_ticker: str) -> Optional[Dict]:
@@ -207,7 +197,7 @@ class KalshiClient:
             response = self._make_request("GET", f"/markets/{market_ticker}/orderbook")
             return response
         except Exception as e:
-            print(f"Error fetching orderbook for {market_ticker}: {e}")
+            logger.exception("Error fetching orderbook for %s: %s", market_ticker, e)
             return None
     
     def get_portfolio(self) -> Optional[Dict]:
@@ -224,7 +214,7 @@ class KalshiClient:
             response = self._make_request("GET", "/portfolio")
             return response
         except Exception as e:
-            print(f"Error fetching portfolio: {e}")
+            logger.exception("Error fetching portfolio: %s", e)
             return None
     
     def place_order(self, market_ticker: str, side: str, action: str, 
@@ -259,6 +249,6 @@ class KalshiClient:
             response = self._make_request("POST", "/portfolio/orders", json=payload)
             return response
         except Exception as e:
-            print(f"Error placing order: {e}")
+            logger.exception("Error placing order: %s", e)
             return None
 

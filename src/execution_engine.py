@@ -300,7 +300,7 @@ class TradeExecutor:
                     orderbook = self.client.get_market_orderbook(market_ticker)
                     if orderbook:
                         opportunities = self._refine_with_orderbook(opportunities, orderbook)
-                except:
+                except Exception:
                     pass
             
             for opp in opportunities:
