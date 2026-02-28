@@ -439,8 +439,8 @@ Built with Python 3.8+, demonstrating production-ready software engineering prac
 
 ### Contact
 
-- **Telegram**: [@vladmeer67](https://t.me/vladmeer67)
-- **X (Twitter)**: [@vladmeer67](https://x.com/vladmeer67)
+- **Telegram**: [@OnChainMee](https://t.me/OnChainMee)
+- **X (Twitter)**: [@OnChainMee](https://x.com/OnChainMee)
 
 ---
 
