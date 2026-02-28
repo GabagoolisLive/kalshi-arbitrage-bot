@@ -17,7 +17,7 @@ capabilities to maximize profitability while maintaining safe trading practices.
 
 Author: vladmeer
 License: MIT
-Repository: https://github.com/vladmeeros/kalshi-arbitrage-bot
+Repository: https://github.com/OnChainMee/kalshi-arbitrage-bot
 """
 import logging
 import sys
